@@ -1,0 +1,12 @@
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "80:80"
+  
+  api:
+    build: ./api
+    environment:
+      PORT: 3000
+    ports:
+      - "3000:3000"

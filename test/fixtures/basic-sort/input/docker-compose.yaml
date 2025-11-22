@@ -1,0 +1,39 @@
+services:
+  zookeeper:
+    image: zookeeper:3.8
+    restart: always
+    ports:
+      - "2181:2181"
+
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: always
+
+  app:
+    build: .
+    depends_on:
+      - database
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: database
+    volumes:
+      - ./app:/app
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:
+  cache_data:
+
+networks:
+  backend:
+  frontend:

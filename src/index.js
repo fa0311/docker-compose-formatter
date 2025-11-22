@@ -21,25 +21,113 @@ const getGuard = (data, fn) => {
 };
 
 /**
+ * @template T
+ * @param {T[]} array
+ * @param {(a: T, b: T) => number} compare
+ * @returns {T[]}
+ */
+const blockPartialSort = (array, compare) => {
+  const n = array.length;
+  if (n <= 1) return array.slice();
+
+  /** @type {number[]} */
+  const parent = Array.from({ length: n }, (_, i) => i);
+  /** @type {number[]} */
+  const rank = new Array(n).fill(0);
+
+  /**
+   * @param {number} x
+   * @returns {number}
+   */
+  function find(x) {
+    if (parent[x] !== x) {
+      parent[x] = find(parent[x]);
+    }
+    return parent[x];
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   */
+  function union(x, y) {
+    let rx = find(x);
+    let ry = find(y);
+    if (rx === ry) return;
+    if (rank[rx] < rank[ry]) {
+      parent[rx] = ry;
+    } else if (rank[rx] > rank[ry]) {
+      parent[ry] = rx;
+    } else {
+      parent[ry] = rx;
+      rank[rx]++;
+    }
+  }
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const c = compare(array[i], array[j]);
+      if (c !== 0) {
+        union(i, j);
+      }
+    }
+  }
+
+  /** @type {Map<number, number[]>} */
+  const groups = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!groups.has(r)) {
+      groups.set(r, []);
+    }
+    groups.get(r).push(i);
+  }
+
+  /** @type {{firstIndex: number, items: T[]}[]} */
+  const blocks = [];
+
+  for (const indices of groups.values()) {
+    const firstIndex = Math.min(...indices);
+    const items = indices.map((idx) => array[idx]);
+    items.sort(compare);
+    blocks.push({ firstIndex, items });
+  }
+
+  blocks.sort((a, b) => a.firstIndex - b.firstIndex);
+
+  /** @type {T[]} */
+  const result = [];
+  for (const block of blocks) {
+    result.push(...block.items);
+  }
+  return result;
+};
+
+/**
  * Sorts the services in the Docker Compose file.
  * @param {YAML.Document | undefined} data
  */
 const sortKeyName = (data) => {
   sortByKey(
     data,
-    data.items
-      .map((item) => item.key.value)
-      .sort((a, b) => {
+    blockPartialSort(
+      data.items.map((item) => item.key.value),
+      (a, b) => {
         const splitA = a.split(/[_-]/);
         const splitB = b.split(/[_-]/);
-        if (splitA.every((part, index) => part === splitB[index])) {
-          return -1;
+        if (splitA.length < splitB.length) {
+          if (splitA.every((part, index) => part === splitB[index])) {
+            return -1;
+          }
         }
-        if (splitB.every((part, index) => part === splitA[index])) {
-          return 1;
+        if (splitB.length < splitA.length) {
+          if (splitB.every((part, index) => part === splitA[index])) {
+            return 1;
+          }
         }
         return 0;
-      }),
+      },
+    ),
   );
 };
 /**
@@ -116,31 +204,38 @@ const checkFileExists = (filepath) => {
   });
 };
 
-const parsed = await parseYamlOptionsFromArgs();
+/**
+ * Main function to sort Docker Compose files.
+ * @param {z.infer<typeof YamlOptionsSchema>} options
+ */
+export const main = async (options) => {
+  const { sortedKeys, input, baseDirs, inputRenameExtensions, inputRenameName, ...yamlOptions } =
+    options;
 
-const { sortedKeys, input, baseDirs, inputRenameExtensions, inputRenameName, ...yamlOptions } =
-  parsed;
+  for await (const file of fs.promises.glob(input)) {
+    const renamedFile = replaceName(file, inputRenameName, inputRenameExtensions);
+    const logFrom = replaceDir(file, baseDirs);
+    const logTo = replaceDir(renamedFile, baseDirs);
+    console.log(`Sorting ${logFrom}...`);
 
-for await (const file of fs.promises.glob(input)) {
-  const renamedFile = replaceName(file, inputRenameName, inputRenameExtensions);
-  const logFrom = replaceDir(file, baseDirs);
-  const logTo = replaceDir(renamedFile, baseDirs);
-  console.log(`Sorting ${logFrom}...`);
+    const data = YAML.parseDocument(await fs.promises.readFile(file, "utf8"));
+    getGuard(data.get("services"), (data) => sortKeyName(data));
+    getGuard(data.get("volumes"), (data) => sortKeyName(data));
+    getGuard(data.get("networks"), (data) => sortKeyName(data));
+    getGuard(data.get("services"), (data) => sortServicesKeys(data, sortedKeys));
 
-  const data = YAML.parseDocument(await fs.promises.readFile(file, "utf8"));
-  getGuard(data.get("services"), (data) => sortKeyName(data));
-  getGuard(data.get("volumes"), (data) => sortKeyName(data));
-  getGuard(data.get("networks"), (data) => sortKeyName(data));
-  getGuard(data.get("services"), (data) => sortServicesKeys(data, sortedKeys));
-
-  if (renamedFile === file) {
-    await fs.promises.writeFile(file, data.toString(yamlOptions));
-  } else {
-    console.log(`Renaming to ${logFrom} -> ${logTo}`);
-    if (await checkFileExists(renamedFile)) {
-      throw new Error(`File already exists: ${logTo}`);
+    if (renamedFile === file) {
+      await fs.promises.writeFile(file, data.toString(yamlOptions));
+    } else {
+      console.log(`Renaming to ${logFrom} -> ${logTo}`);
+      if (await checkFileExists(renamedFile)) {
+        throw new Error(`File already exists: ${logTo}`);
+      }
+      await fs.promises.writeFile(renamedFile, data.toString(yamlOptions));
+      await fs.promises.unlink(file);
     }
-    await fs.promises.writeFile(renamedFile, data.toString(yamlOptions));
-    await fs.promises.unlink(file);
   }
-}
+};
+
+const parsed = await parseYamlOptionsFromArgs();
+await main(parsed);
