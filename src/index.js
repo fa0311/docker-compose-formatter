@@ -1,6 +1,6 @@
-import { glob, globSync } from "node:fs";
-import fs from "node:fs/promises";
+import fs from "node:fs";
 import YAML from "yaml";
+import { parseYamlOptionsFromArgs } from "./parser.js";
 
 /**
  * @param {YAML.Document} docs
@@ -45,26 +45,10 @@ const sortKeyName = (data) => {
 /**
  * Sorts the entire Docker Compose file.
  * @param {YAML.Document} data
+ * @param {string[]} sortedKeys
  */
-const sortServicesKeys = (data) => {
+const sortServicesKeys = (data, sortedKeys) => {
   for (const service of data.items) {
-    const sortedKeys = [
-      "image",
-      "build",
-      "container_name",
-      "restart",
-      "ports",
-      "environment",
-      "volumes",
-      "depends_on",
-      "networks",
-      "command",
-      "entrypoint",
-      "healthcheck",
-      "logging",
-      "labels",
-    ];
-
     const serviceData = service.value;
     sortByKey(
       serviceData,
@@ -82,13 +66,81 @@ const sortServicesKeys = (data) => {
   }
 };
 
-for (const file of globSync("target/**/docker-compose.yml")) {
-  console.log(`Sorting ${file}`);
-  const data = YAML.parseDocument(await fs.readFile(file, "utf8"));
+/**
+ * Replaces the name and/or extension of a file path.
+ * @param {string} file - The original file path.
+ * @param {string|undefined} name - The new name for the file (without extension).
+ * @param {string|undefined} ext - The new extension for the file (with dot).
+ * @returns {string} - The modified file path.
+ */
+const replaceName = (file, name, ext) => {
+  const parts = file.split("/");
+  const filenameParts = parts[parts.length - 1].split(".");
+
+  if (name) {
+    filenameParts[0] = name;
+    parts[parts.length - 1] = filenameParts.join(".");
+  }
+  if (ext) {
+    filenameParts[filenameParts.length - 1] = ext;
+    parts[parts.length - 1] = filenameParts.join(".");
+  }
+  return parts.join("/");
+};
+
+/**
+ * Replaces the base directory in a file path.
+ * @param {string} file - The original file path.
+ * @param {string} baseDir - The base directory to replace.
+ * @returns {string} - The modified file path.
+ */
+const replaceDir = (file, baseDirs) => {
+  for (const baseDir of baseDirs) {
+    if (file.startsWith(baseDir)) {
+      return file.slice(baseDir.length);
+    }
+  }
+  return file;
+};
+
+/**
+ * Checks if a file exists.
+ * @param {string} filepath - The path to the file.
+ * @returns {Promise<boolean>} - True if the file exists, false otherwise.
+ */
+const checkFileExists = (filepath) => {
+  return new Promise((resolve) => {
+    fs.access(filepath, fs.constants.F_OK, (error) => {
+      resolve(!error);
+    });
+  });
+};
+
+const parsed = await parseYamlOptionsFromArgs();
+
+const { sortedKeys, input, baseDirs, inputRenameExtensions, inputRenameName, ...yamlOptions } =
+  parsed;
+
+for await (const file of fs.promises.glob(input)) {
+  const renamedFile = replaceName(file, inputRenameName, inputRenameExtensions);
+  const logFrom = replaceDir(file, baseDirs);
+  const logTo = replaceDir(renamedFile, baseDirs);
+  console.log(`Sorting ${logFrom}...`);
+
+  const data = YAML.parseDocument(await fs.promises.readFile(file, "utf8"));
   getGuard(data.get("services"), (data) => sortKeyName(data));
   getGuard(data.get("volumes"), (data) => sortKeyName(data));
   getGuard(data.get("networks"), (data) => sortKeyName(data));
-  getGuard(data.get("services"), (data) => sortServicesKeys(data));
+  getGuard(data.get("services"), (data) => sortServicesKeys(data, sortedKeys));
 
-  await fs.writeFile(file, data.toString());
+  if (renamedFile === file) {
+    await fs.promises.writeFile(file, data.toString(yamlOptions));
+  } else {
+    console.log(`Renaming to ${logFrom} -> ${logTo}`);
+    if (await checkFileExists(renamedFile)) {
+      throw new Error(`File already exists: ${logTo}`);
+    }
+    await fs.promises.writeFile(renamedFile, data.toString(yamlOptions));
+    await fs.promises.unlink(file);
+  }
 }
