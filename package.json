@@ -2,7 +2,7 @@
   "name": "docker-compose-formatter",
   "version": "0.1.0",
   "type": "module",
-  "description": "Minimal CLI to sort docker-compose YAML files (services, keys, environment) using modern TypeScript tooling.",
+  "description": "Minimal CLI to format docker-compose YAML files (services, keys, environment) using modern TypeScript tooling.",
   "bin": {
     "docker-compose-formatter": "dist/index.js"
   },
