@@ -20,7 +20,7 @@ const sortByKey = (docs, keys) => {
  */
 const getGuard = (data, fn) => {
   if (!data) return;
-  if (data.items.length === 0) return;
+  if (!data.items || data.items.length === 0) return;
   fn(data);
 };
 
@@ -144,26 +144,36 @@ const sortKeyName = (data) => {
   );
 };
 /**
- * Sorts the entire Docker Compose file.
+ * Sorts keys in a YAML document by the specified order.
  * @param {YAML.Document} data
  * @param {string[]} sortedKeys
  */
-const sortKeysValue = (data, sortedKeys) => {
-  for (const service of data.items) {
-    const serviceData = service.value;
-    sortByKey(
-      serviceData,
-      serviceData.items
-        .map((item) => item.key.value)
-        .sort((a, b) => {
-          const indexA = sortedKeys.indexOf(a);
-          const indexB = sortedKeys.indexOf(b);
-          if (indexA === -1) return 1;
-          if (indexB === -1) return -1;
-          if (indexA !== -1 && indexB === -1) return 0;
-          return indexA - indexB;
-        }),
-    );
+const sortKeysInDocument = (data, sortedKeys) => {
+  sortByKey(
+    data,
+    data.items
+      .map((item) => item.key.value)
+      .sort((a, b) => {
+        const indexA = sortedKeys.indexOf(a);
+        const indexB = sortedKeys.indexOf(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        if (indexA !== -1 && indexB === -1) return 0;
+        return indexA - indexB;
+      }),
+  );
+};
+
+/**
+ * Loops through items and applies a function to each item's value.
+ * @param {YAML.Document | undefined} data
+ * @param {(itemValue: YAML.Document) => void} fn
+ */
+const forEachItem = (data, fn) => {
+  for (const item of data.items) {
+    if (item.value) {
+      fn(item.value);
+    }
   }
 };
 
@@ -222,8 +232,21 @@ const checkFileExists = (filepath) => {
  * @param {z.infer<typeof YamlOptionsSchema>} options
  */
 export const main = async (options) => {
-  const { sortedKeys, input, baseDirs, inputRenameExtensions, inputRenameName, ...yamlOptions } =
-    options;
+  const {
+    rootSortedKeys,
+    serviceSortedKeys,
+    buildSortedKeys,
+    healthcheckSortedKeys,
+    loggingSortedKeys,
+    deploySortedKeys,
+    networkDefSortedKeys,
+    volumeDefSortedKeys,
+    input,
+    baseDirs,
+    inputRenameExtensions,
+    inputRenameName,
+    ...yamlOptions
+  } = options;
 
   for await (const file of fs.promises.glob(input)) {
     const renamedFile = replaceName(file, inputRenameName, inputRenameExtensions);
@@ -233,10 +256,53 @@ export const main = async (options) => {
 
     const data = YAML.parseDocument(await fs.promises.readFile(file, "utf8"));
     removeKey(data, "version");
+
+    // Sort root level keys
+    if (data.contents && data.contents.items) {
+      sortKeysInDocument(data.contents, rootSortedKeys);
+    }
+
+    // Sort service names, volume names, and network names
     getGuard(data.get("services"), (data) => sortKeyName(data));
     getGuard(data.get("volumes"), (data) => sortKeyName(data));
     getGuard(data.get("networks"), (data) => sortKeyName(data));
-    getGuard(data.get("services"), (data) => sortKeysValue(data, sortedKeys));
+
+    // Sort service-level keys
+    getGuard(data.get("services"), (servicesData) => {
+      forEachItem(servicesData, (serviceData) => {
+        getGuard(serviceData, (data) => sortKeysInDocument(data, serviceSortedKeys));
+      });
+    });
+
+    // Sort nested elements in services
+    getGuard(data.get("services"), (servicesData) => {
+      forEachItem(servicesData, (serviceData) => {
+        getGuard(serviceData.get("build"), (build) => sortKeysInDocument(build, buildSortedKeys));
+        getGuard(serviceData.get("healthcheck"), (healthcheck) =>
+          sortKeysInDocument(healthcheck, healthcheckSortedKeys),
+        );
+        getGuard(serviceData.get("logging"), (logging) =>
+          sortKeysInDocument(logging, loggingSortedKeys),
+        );
+        getGuard(serviceData.get("deploy"), (deploy) =>
+          sortKeysInDocument(deploy, deploySortedKeys),
+        );
+      });
+    });
+
+    // Sort network definitions
+    getGuard(data.get("networks"), (networksData) => {
+      forEachItem(networksData, (networkData) => {
+        getGuard(networkData, (data) => sortKeysInDocument(data, networkDefSortedKeys));
+      });
+    });
+
+    // Sort volume definitions
+    getGuard(data.get("volumes"), (volumesData) => {
+      forEachItem(volumesData, (volumeData) => {
+        getGuard(volumeData, (data) => sortKeysInDocument(data, volumeDefSortedKeys));
+      });
+    });
 
     if (renamedFile === file) {
       await fs.promises.writeFile(file, data.toString(yamlOptions));

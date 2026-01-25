@@ -25,55 +25,114 @@ export const YamlOptionsSchema = z.object({
   simpleKeys: z.boolean().optional(),
   singleQuote: z.boolean().optional(),
   trueStr: z.string().optional(),
-  sortedKeys: z.array(z.string()).default([
-    "extends",
-    "image",
-    "build",
-
-    "container_name",
-    "command",
-    "entrypoint",
-    "restart",
-
-    "depends_on",
-    "networks",
-
-    "ports",
-    "expose",
-    "environment",
-    "env_file",
-    "secrets",
-    "configs",
-    "volumes",
-    "tmpfs",
-
-    "working_dir",
-    "user",
-    "group_add",
-
-    "privileged",
-    "cap_add",
-    "cap_drop",
-    "security_opt",
-    "read_only",
-
-    "deploy",
-    "cpus",
-    "mem_limit",
-    "mem_reservation",
-    "pids_limit",
-    "ulimits",
-
-    "extra_hosts",
-    "dns",
-    "dns_search",
-    "hostname",
-    "domainname",
-
-    "healthcheck",
-    "logging",
-    "labels",
-  ]),
+  rootSortedKeys: z
+    .array(z.string())
+    .default(["name", "include", "services", "networks", "volumes", "configs", "secrets"]),
+  serviceSortedKeys: z
+    .array(z.string())
+    .default([
+      "extends",
+      "image",
+      "build",
+      "container_name",
+      "command",
+      "entrypoint",
+      "restart",
+      "depends_on",
+      "networks",
+      "ports",
+      "expose",
+      "environment",
+      "env_file",
+      "secrets",
+      "configs",
+      "volumes",
+      "tmpfs",
+      "working_dir",
+      "user",
+      "group_add",
+      "privileged",
+      "cap_add",
+      "cap_drop",
+      "security_opt",
+      "read_only",
+      "deploy",
+      "cpus",
+      "mem_limit",
+      "mem_reservation",
+      "pids_limit",
+      "ulimits",
+      "extra_hosts",
+      "dns",
+      "dns_search",
+      "hostname",
+      "domainname",
+      "healthcheck",
+      "logging",
+      "labels",
+    ]),
+  buildSortedKeys: z
+    .array(z.string())
+    .default([
+      "context",
+      "dockerfile",
+      "args",
+      "labels",
+      "cache_from",
+      "cache_to",
+      "target",
+      "network",
+      "shm_size",
+      "extra_hosts",
+      "isolation",
+      "privileged",
+      "secrets",
+      "ssh",
+      "tags",
+      "platforms",
+      "pull",
+    ]),
+  healthcheckSortedKeys: z
+    .array(z.string())
+    .default([
+      "test",
+      "interval",
+      "timeout",
+      "retries",
+      "start_period",
+      "start_interval",
+      "disable",
+    ]),
+  loggingSortedKeys: z.array(z.string()).default(["driver", "options"]),
+  deploySortedKeys: z
+    .array(z.string())
+    .default([
+      "mode",
+      "replicas",
+      "endpoint_mode",
+      "labels",
+      "placement",
+      "resources",
+      "restart_policy",
+      "rollback_config",
+      "update_config",
+    ]),
+  networkDefSortedKeys: z
+    .array(z.string())
+    .default([
+      "driver",
+      "driver_opts",
+      "ipam",
+      "external",
+      "internal",
+      "attachable",
+      "enable_ipv6",
+      "labels",
+      "name",
+    ]),
+  volumeDefSortedKeys: z
+    .array(z.string())
+    .default(["driver", "driver_opts", "external", "labels", "name"]),
   input: z
     .array(z.string())
     .default([

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { main } from "../src/index.js";
+import { YamlOptionsSchema } from "../src/parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const tempDir = path.join(__dirname, "temp");
@@ -29,8 +30,8 @@ describe("main integration", () => {
 
     await fs.promises.copyFile(input, work);
 
-    await main({
-      sortedKeys: [
+    const options = await YamlOptionsSchema.parseAsync({
+      serviceSortedKeys: [
         "image",
         "build",
         "container_name",
@@ -43,6 +44,7 @@ describe("main integration", () => {
       input: [work],
       baseDirs: [tempDir],
     });
+    await main(options);
 
     const actual = await fs.promises.readFile(work, "utf8");
     const exp = await fs.promises.readFile(expected, "utf8");
@@ -62,13 +64,13 @@ describe("main integration", () => {
 
     await fs.promises.copyFile(input, work);
 
-    await main({
-      sortedKeys: ["image", "build", "ports", "environment"],
+    const options = await YamlOptionsSchema.parseAsync({
       input: [work],
       baseDirs: [tempDir],
       inputRenameExtensions: "yaml",
       inputRenameName: "docker-compose",
     });
+    await main(options);
 
     expect(fs.existsSync(work)).toBe(false);
 
@@ -91,11 +93,11 @@ describe("main integration", () => {
 
     await fs.promises.copyFile(input, work);
 
-    await main({
-      sortedKeys: ["image", "ports"],
+    const options = await YamlOptionsSchema.parseAsync({
       input: [work],
       baseDirs: [tempDir],
     });
+    await main(options);
 
     const actual = await fs.promises.readFile(work, "utf8");
     const exp = await fs.promises.readFile(expected, "utf8");
@@ -115,15 +117,14 @@ describe("main integration", () => {
       "services:\n  db:\n    image: db:latest",
     );
 
-    await expect(
-      main({
-        sortedKeys: ["image"],
-        input: [work1],
-        baseDirs: [tempDir],
-        inputRenameExtensions: "yaml",
-        inputRenameName: "docker-compose",
-      }),
-    ).rejects.toThrow("File already exists");
+    const options = await YamlOptionsSchema.parseAsync({
+      input: [work1],
+      baseDirs: [tempDir],
+      inputRenameExtensions: "yaml",
+      inputRenameName: "docker-compose",
+    });
+
+    await expect(main(options)).rejects.toThrow("File already exists");
   });
 
   it("advanced sort with hyphens", async () => {
@@ -139,11 +140,11 @@ describe("main integration", () => {
 
     await fs.promises.copyFile(input, work);
 
-    await main({
-      sortedKeys: ["image"],
+    const options = await YamlOptionsSchema.parseAsync({
       input: [work],
       baseDirs: [tempDir],
     });
+    await main(options);
 
     const actual = await fs.promises.readFile(work, "utf8");
     const exp = await fs.promises.readFile(expected, "utf8");
@@ -163,11 +164,35 @@ describe("main integration", () => {
 
     await fs.promises.copyFile(input, work);
 
-    await main({
-      sortedKeys: ["image"],
+    const options = await YamlOptionsSchema.parseAsync({
       input: [work],
       baseDirs: [tempDir],
     });
+    await main(options);
+
+    const actual = await fs.promises.readFile(work, "utf8");
+    const exp = await fs.promises.readFile(expected, "utf8");
+    expect(actual).toBe(exp);
+  });
+
+  it("nested sort with all features", async () => {
+    const input = path.join(
+      __dirname,
+      "fixtures/nested-sort/input/docker-compose.yaml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/nested-sort/expected/docker-compose.yaml",
+    );
+    const work = path.join(tempDir, "docker-compose.yaml");
+
+    await fs.promises.copyFile(input, work);
+
+    const options = await YamlOptionsSchema.parseAsync({
+      input: [work],
+      baseDirs: [tempDir],
+    });
+    await main(options);
 
     const actual = await fs.promises.readFile(work, "utf8");
     const exp = await fs.promises.readFile(expected, "utf8");

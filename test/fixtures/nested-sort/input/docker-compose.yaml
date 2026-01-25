@@ -1,0 +1,68 @@
+name: my-app
+
+volumes:
+  cache_data:
+    name: cache-volume
+    driver: local
+    external: false
+    labels:
+      env: production
+    driver_opts:
+      type: none
+  db_data:
+    driver: local
+
+networks:
+  frontend:
+    name: frontend-network
+    enable_ipv6: true
+    driver: bridge
+    external: false
+    labels:
+      tier: frontend
+    driver_opts:
+      com.docker.network.bridge.name: frontend0
+  backend:
+    driver: bridge
+
+services:
+  app:
+    volumes:
+      - ./app:/app
+    environment:
+      DB_HOST: database
+    ports:
+      - "8080:8080"
+    depends_on:
+      - database
+    build:
+      target: production
+      dockerfile: Dockerfile
+      context: .
+      args:
+        NODE_ENV: production
+    healthcheck:
+      retries: 3
+      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      timeout: 10s
+    deploy:
+      restart_policy:
+        condition: on-failure
+      replicas: 3
+      mode: replicated
+      resources:
+        limits:
+          cpus: '0.5'
+    logging:
+      options:
+        max-size: "10m"
+      driver: json-file
+    image: myapp:latest
+  database:
+    image: postgres:15
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: secret
+    restart: always
