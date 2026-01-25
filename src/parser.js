@@ -25,24 +25,55 @@ export const YamlOptionsSchema = z.object({
   simpleKeys: z.boolean().optional(),
   singleQuote: z.boolean().optional(),
   trueStr: z.string().optional(),
-  sortedKeys: z
-    .array(z.string())
-    .default([
-      "image",
-      "build",
-      "container_name",
-      "restart",
-      "ports",
-      "environment",
-      "volumes",
-      "depends_on",
-      "networks",
-      "command",
-      "entrypoint",
-      "healthcheck",
-      "logging",
-      "labels",
-    ]),
+  sortedKeys: z.array(z.string()).default([
+    "extends",
+    "image",
+    "build",
+
+    "container_name",
+    "command",
+    "entrypoint",
+    "restart",
+
+    "depends_on",
+    "networks",
+
+    "ports",
+    "expose",
+    "environment",
+    "env_file",
+    "secrets",
+    "configs",
+    "volumes",
+    "tmpfs",
+
+    "working_dir",
+    "user",
+    "group_add",
+
+    "privileged",
+    "cap_add",
+    "cap_drop",
+    "security_opt",
+    "read_only",
+
+    "deploy",
+    "cpus",
+    "mem_limit",
+    "mem_reservation",
+    "pids_limit",
+    "ulimits",
+
+    "extra_hosts",
+    "dns",
+    "dns_search",
+    "hostname",
+    "domainname",
+
+    "healthcheck",
+    "logging",
+    "labels",
+  ]),
   input: z
     .array(z.string())
     .default([

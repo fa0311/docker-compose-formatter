@@ -7,7 +7,7 @@ import { main } from "../src/index.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const tempDir = path.join(__dirname, "temp");
 
-describe("main e2e", () => {
+describe("main integration", () => {
   beforeEach(async () => {
     await fs.promises.mkdir(tempDir, { recursive: true });
   });
@@ -17,14 +17,29 @@ describe("main e2e", () => {
   });
 
   it("basic sort", async () => {
-    const input = path.join(__dirname, "fixtures/basic-sort/input/docker-compose.yaml");
-    const expected = path.join(__dirname, "fixtures/basic-sort/expected/docker-compose.yaml");
+    const input = path.join(
+      __dirname,
+      "fixtures/basic-sort/input/docker-compose.yaml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/basic-sort/expected/docker-compose.yaml",
+    );
     const work = path.join(tempDir, "docker-compose.yaml");
 
     await fs.promises.copyFile(input, work);
-    
+
     await main({
-      sortedKeys: ["image", "build", "container_name", "restart", "ports", "environment", "volumes", "depends_on"],
+      sortedKeys: [
+        "image",
+        "build",
+        "container_name",
+        "restart",
+        "ports",
+        "environment",
+        "volumes",
+        "depends_on",
+      ],
       input: [work],
       baseDirs: [tempDir],
     });
@@ -35,12 +50,18 @@ describe("main e2e", () => {
   });
 
   it("rename", async () => {
-    const input = path.join(__dirname, "fixtures/rename-test/input/compose.yml");
-    const expected = path.join(__dirname, "fixtures/rename-test/expected/docker-compose.yaml");
+    const input = path.join(
+      __dirname,
+      "fixtures/rename-test/input/compose.yml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/rename-test/expected/docker-compose.yaml",
+    );
     const work = path.join(tempDir, "compose.yml");
 
     await fs.promises.copyFile(input, work);
-    
+
     await main({
       sortedKeys: ["image", "build", "ports", "environment"],
       input: [work],
@@ -50,7 +71,7 @@ describe("main e2e", () => {
     });
 
     expect(fs.existsSync(work)).toBe(false);
-    
+
     const renamed = path.join(tempDir, "docker-compose.yaml");
     const actual = await fs.promises.readFile(renamed, "utf8");
     const exp = await fs.promises.readFile(expected, "utf8");
@@ -58,12 +79,18 @@ describe("main e2e", () => {
   });
 
   it("rename with suffix preserves suffix", async () => {
-    const input = path.join(__dirname, "fixtures/rename-with-suffix/input/docker-compose.dev.yaml");
-    const expected = path.join(__dirname, "fixtures/rename-with-suffix/expected/docker-compose.dev.yaml");
+    const input = path.join(
+      __dirname,
+      "fixtures/rename-with-suffix/input/docker-compose.dev.yaml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/rename-with-suffix/expected/docker-compose.dev.yaml",
+    );
     const work = path.join(tempDir, "docker-compose.dev.yaml");
 
     await fs.promises.copyFile(input, work);
-    
+
     await main({
       sortedKeys: ["image", "ports"],
       input: [work],
@@ -79,8 +106,14 @@ describe("main e2e", () => {
     const work1 = path.join(tempDir, "compose.yml");
     const work2 = path.join(tempDir, "docker-compose.yaml");
 
-    await fs.promises.writeFile(work1, "services:\n  app:\n    image: app:latest");
-    await fs.promises.writeFile(work2, "services:\n  db:\n    image: db:latest");
+    await fs.promises.writeFile(
+      work1,
+      "services:\n  app:\n    image: app:latest",
+    );
+    await fs.promises.writeFile(
+      work2,
+      "services:\n  db:\n    image: db:latest",
+    );
 
     await expect(
       main({
@@ -89,17 +122,47 @@ describe("main e2e", () => {
         baseDirs: [tempDir],
         inputRenameExtensions: "yaml",
         inputRenameName: "docker-compose",
-      })
+      }),
     ).rejects.toThrow("File already exists");
   });
 
   it("advanced sort with hyphens", async () => {
-    const input = path.join(__dirname, "fixtures/advanced-sort/input/docker-compose.yaml");
-    const expected = path.join(__dirname, "fixtures/advanced-sort/expected/docker-compose.yaml");
+    const input = path.join(
+      __dirname,
+      "fixtures/advanced-sort/input/docker-compose.yaml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/advanced-sort/expected/docker-compose.yaml",
+    );
     const work = path.join(tempDir, "docker-compose.yaml");
 
     await fs.promises.copyFile(input, work);
-    
+
+    await main({
+      sortedKeys: ["image"],
+      input: [work],
+      baseDirs: [tempDir],
+    });
+
+    const actual = await fs.promises.readFile(work, "utf8");
+    const exp = await fs.promises.readFile(expected, "utf8");
+    expect(actual).toBe(exp);
+  });
+
+  it("removes version key", async () => {
+    const input = path.join(
+      __dirname,
+      "fixtures/version/input/docker-compose.yaml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/version/expected/docker-compose.yaml",
+    );
+    const work = path.join(tempDir, "docker-compose.yaml");
+
+    await fs.promises.copyFile(input, work);
+
     await main({
       sortedKeys: ["image"],
       input: [work],

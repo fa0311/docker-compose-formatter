@@ -14,10 +14,23 @@ const sortByKey = (docs, keys) => {
   }
 };
 
+/**
+ * @param {YAML.Document | undefined} data
+ * @param {(data: YAML.Document) => void} fn
+ */
 const getGuard = (data, fn) => {
   if (!data) return;
   if (data.items.length === 0) return;
   fn(data);
+};
+
+/**
+ * @param {YAML.Document} doc
+ * @param {string} key
+ */
+const removeKey = (doc, key) => {
+  const hasKey = doc.get(key) !== undefined;
+  if (hasKey) doc.delete(key);
 };
 
 /**
@@ -135,7 +148,7 @@ const sortKeyName = (data) => {
  * @param {YAML.Document} data
  * @param {string[]} sortedKeys
  */
-const sortServicesKeys = (data, sortedKeys) => {
+const sortKeysValue = (data, sortedKeys) => {
   for (const service of data.items) {
     const serviceData = service.value;
     sortByKey(
@@ -219,10 +232,11 @@ export const main = async (options) => {
     console.log(`Sorting ${logFrom}...`);
 
     const data = YAML.parseDocument(await fs.promises.readFile(file, "utf8"));
+    removeKey(data, "version");
     getGuard(data.get("services"), (data) => sortKeyName(data));
     getGuard(data.get("volumes"), (data) => sortKeyName(data));
     getGuard(data.get("networks"), (data) => sortKeyName(data));
-    getGuard(data.get("services"), (data) => sortServicesKeys(data, sortedKeys));
+    getGuard(data.get("services"), (data) => sortKeysValue(data, sortedKeys));
 
     if (renamedFile === file) {
       await fs.promises.writeFile(file, data.toString(yamlOptions));

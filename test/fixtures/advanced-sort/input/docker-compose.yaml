@@ -1,9 +1,9 @@
 services:
   aa:
     image: aa:latest
+  aa-bbb:
+    image: aa-bbb:latest
   aaa:
     image: aaa:latest
   aaa-bbb:
     image: aaa-bbb:latest
-  aa-bbb:
-    image: aa-bbb:latest
