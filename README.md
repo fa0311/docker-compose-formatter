@@ -31,13 +31,20 @@ pnpm start
 
 ### Sorting Configuration
 
-| Option                    | Type                              | Description                               |
-| ------------------------- | --------------------------------- | ----------------------------------------- |
-| `--sortedKeys`            | string[]                          | Specify key order within services         |
-| `--input`                 | string[]                          | Glob patterns for target files            |
-| `--baseDirs`              | string[]                          | Base directories for log output           |
-| `--inputRenameExtensions` | `'yml'` \| `'yaml'`               | Standardize extensions (e.g., yml → yaml) |
-| `--inputRenameName`       | `'docker-compose'` \| `'compose'` | Standardize file names                    |
+| Option                    | Type                              | Description                                                |
+| ------------------------- | --------------------------------- | ---------------------------------------------------------- |
+| `--rootSortedKeys`        | string[]                          | Specify key order at root level (e.g., services, networks) |
+| `--serviceSortedKeys`     | string[]                          | Specify key order within services                          |
+| `--buildSortedKeys`       | string[]                          | Specify key order within service build sections            |
+| `--healthcheckSortedKeys` | string[]                          | Specify key order within service healthcheck sections      |
+| `--loggingSortedKeys`     | string[]                          | Specify key order within service logging sections          |
+| `--deploySortedKeys`      | string[]                          | Specify key order within service deploy sections           |
+| `--networkDefSortedKeys`  | string[]                          | Specify key order within network definitions               |
+| `--volumeDefSortedKeys`   | string[]                          | Specify key order within volume definitions                |
+| `--input`                 | string[]                          | Glob patterns for target files                             |
+| `--baseDirs`              | string[]                          | Base directories for log output                            |
+| `--inputRenameExtensions` | `'yml'` \| `'yaml'`               | Standardize extensions (e.g., yml → yaml)                  |
+| `--inputRenameName`       | `'docker-compose'` \| `'compose'` | Standardize file names                                     |
 
 > For default values, see [parser.js](src/parser.js)
 
@@ -61,8 +68,11 @@ For more detailed options, refer to the [yaml official documentation](https://ee
 ### Examples
 
 ```sh
-# Customize key order
-pnpm start -- --sortedKeys image --sortedKeys ports --sortedKeys environment
+# Customize service key order
+pnpm start -- --serviceSortedKeys image --serviceSortedKeys ports --serviceSortedKeys environment
+
+# Customize root key order
+pnpm start -- --rootSortedKeys services --rootSortedKeys networks --rootSortedKeys volumes
 
 # Change indentation to 4 spaces
 pnpm start -- --indent 4
