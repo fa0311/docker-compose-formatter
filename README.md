@@ -14,7 +14,7 @@ A CLI tool to automatically sort services, keys, and environment variables in Do
 ### Run with Docker
 
 ```sh
-docker run --rm -v "$PWD":/app/target ghcr.io/fa0311/docker-compose-formatter/docker-compose-formatter-docker:latest
+docker run --rm -v "$PWD":/app/target ghcr.io/fa0311/docker-compose-formatter:latest
 ```
 
 ### Run Locally
