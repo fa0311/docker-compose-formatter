@@ -133,6 +133,7 @@ export const YamlOptionsSchema = z.object({
   volumeDefSortedKeys: z
     .array(z.string())
     .default(["driver", "driver_opts", "external", "labels", "name"]),
+  ignoreGitignored: z.boolean().default(true),
   input: z
     .array(z.string())
     .default([
@@ -185,6 +186,7 @@ export const parseYamlOptionsFromArgs = async (argv = process.argv.slice(2)) => 
       deploySortedKeys: { type: "string", multiple: true },
       networkDefSortedKeys: { type: "string", multiple: true },
       volumeDefSortedKeys: { type: "string", multiple: true },
+      ignoreGitignored: { type: "boolean" },
       input: { type: "string", multiple: true },
       baseDirs: { type: "string", multiple: true },
       inputRenameExtensions: { type: "string" },

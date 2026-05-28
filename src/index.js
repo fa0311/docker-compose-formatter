@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { globby } from "globby";
 import YAML from "yaml";
 import { parseYamlOptionsFromArgs } from "./parser.js";
 
@@ -245,10 +246,11 @@ export const main = async (options) => {
     baseDirs,
     inputRenameExtensions,
     inputRenameName,
+    ignoreGitignored,
     ...yamlOptions
   } = options;
 
-  for await (const file of fs.promises.glob(input)) {
+  for (const file of await globby(input, { gitignore: ignoreGitignored })) {
     const renamedFile = replaceName(file, inputRenameName, inputRenameExtensions);
     const logFrom = replaceDir(file, baseDirs);
     const logTo = replaceDir(renamedFile, baseDirs);

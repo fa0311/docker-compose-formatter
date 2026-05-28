@@ -127,6 +127,37 @@ describe("main integration", () => {
     await expect(main(options)).rejects.toThrow("File already exists");
   });
 
+  it("skips files ignored by .gitignore when enabled", async () => {
+    const ignoredDir = path.join(tempDir, "ignored");
+    const keptDir = path.join(tempDir, "kept");
+    const ignoredFile = path.join(ignoredDir, "docker-compose.yaml");
+    const keptFile = path.join(keptDir, "docker-compose.yaml");
+    const unsorted = `services:
+  app:
+    ports:
+      - "8080:8080"
+    image: app:latest
+`;
+
+    await fs.promises.mkdir(ignoredDir, { recursive: true });
+    await fs.promises.mkdir(keptDir, { recursive: true });
+    await fs.promises.writeFile(path.join(tempDir, ".gitignore"), "ignored/\n");
+    await fs.promises.writeFile(ignoredFile, unsorted);
+    await fs.promises.writeFile(keptFile, unsorted);
+
+    const options = await YamlOptionsSchema.parseAsync({
+      input: [path.join(tempDir, "**/docker-compose.yaml")],
+      baseDirs: [tempDir],
+      ignoreGitignored: true,
+    });
+    await main(options);
+
+    const ignoredActual = await fs.promises.readFile(ignoredFile, "utf8");
+    const keptActual = await fs.promises.readFile(keptFile, "utf8");
+    expect(ignoredActual).toBe(unsorted);
+    expect(keptActual).toContain("    image: app:latest\n    ports:");
+  });
+
   it("advanced sort with hyphens", async () => {
     const input = path.join(
       __dirname,
