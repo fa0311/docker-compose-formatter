@@ -1,0 +1,13 @@
+name: demo
+
+services:
+  app:
+    image: app:latest
+    ports:
+      - "8080:8080"
+
+networks:
+  backend:
+
+volumes:
+  db_data:

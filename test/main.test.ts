@@ -206,6 +206,30 @@ describe("main integration", () => {
     expect(actual).toBe(exp);
   });
 
+  it("preserves blank lines between sections while sorting", async () => {
+    const input = path.join(
+      __dirname,
+      "fixtures/preserve-blank-lines/input/docker-compose.yaml",
+    );
+    const expected = path.join(
+      __dirname,
+      "fixtures/preserve-blank-lines/expected/docker-compose.yaml",
+    );
+    const work = path.join(tempDir, "docker-compose.yaml");
+
+    await fs.promises.copyFile(input, work);
+
+    const options = await YamlOptionsSchema.parseAsync({
+      input: [work],
+      baseDirs: [tempDir],
+    });
+    await main(options);
+
+    const actual = await fs.promises.readFile(work, "utf8");
+    const exp = await fs.promises.readFile(expected, "utf8");
+    expect(actual).toBe(exp);
+  });
+
   it("nested sort with all features", async () => {
     const input = path.join(
       __dirname,

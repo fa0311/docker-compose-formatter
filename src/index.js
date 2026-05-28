@@ -8,11 +8,45 @@ import { parseYamlOptionsFromArgs } from "./parser.js";
  * @param {string[]} keys
  */
 const sortByKey = (docs, keys) => {
-  for (const key of keys) {
-    const data = docs.get(key, true);
-    docs.delete(key);
-    docs.add({ key: key, value: data });
+  moveTrailingBlankLinesToNextKey(docs);
+
+  const keyOrder = new Map(keys.map((key, index) => [key, index]));
+  docs.items.sort((a, b) => keyOrder.get(a.key.value) - keyOrder.get(b.key.value));
+
+  if (docs.items.length > 0) {
+    delete docs.items[0].key.spaceBefore;
   }
+};
+
+/**
+ * YAML sometimes attaches a blank line after an empty value to that value
+ * rather than to the following key. Move that boundary marker before sorting.
+ * @param {YAML.Document} docs
+ */
+const moveTrailingBlankLinesToNextKey = (docs) => {
+  for (const [i, next] of docs.items.entries()) {
+    if (i === 0) continue;
+    if (next.key.spaceBefore) continue;
+    if (takeTrailingBlankLine(docs.items[i - 1].value)) {
+      next.key.spaceBefore = true;
+    }
+  }
+};
+
+/**
+ * @param {YAML.Document | undefined} node
+ * @returns {boolean}
+ */
+const takeTrailingBlankLine = (node) => {
+  if (!node?.items || node.items.length === 0) return false;
+
+  const lastItem = node.items[node.items.length - 1];
+  if (lastItem.value?.spaceBefore && lastItem.value.value == null) {
+    delete lastItem.value.spaceBefore;
+    return true;
+  }
+
+  return takeTrailingBlankLine(lastItem.value);
 };
 
 /**
@@ -159,7 +193,6 @@ const sortKeysInDocument = (data, sortedKeys) => {
         const indexB = sortedKeys.indexOf(b);
         if (indexA === -1) return 1;
         if (indexB === -1) return -1;
-        if (indexA !== -1 && indexB === -1) return 0;
         return indexA - indexB;
       }),
   );

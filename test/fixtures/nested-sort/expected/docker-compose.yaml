@@ -1,4 +1,5 @@
 name: my-app
+
 services:
   app:
     image: myapp:latest
@@ -40,6 +41,7 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - db_data:/var/lib/postgresql/data
+
 networks:
   frontend:
     driver: bridge
@@ -52,6 +54,7 @@ networks:
     name: frontend-network
   backend:
     driver: bridge
+
 volumes:
   cache_data:
     driver: local
