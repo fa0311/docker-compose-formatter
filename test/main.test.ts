@@ -41,8 +41,8 @@ describe("main integration", () => {
         "volumes",
         "depends_on",
       ],
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
     });
     await main(options);
 
@@ -65,8 +65,8 @@ describe("main integration", () => {
     await fs.promises.copyFile(input, work);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
       inputRenameExtensions: "yaml",
       inputRenameName: "docker-compose",
     });
@@ -94,8 +94,8 @@ describe("main integration", () => {
     await fs.promises.copyFile(input, work);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
     });
     await main(options);
 
@@ -118,8 +118,8 @@ describe("main integration", () => {
     );
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work1],
-      baseDirs: [tempDir],
+      input: ["compose.yml"],
+      cwd: tempDir,
       inputRenameExtensions: "yaml",
       inputRenameName: "docker-compose",
     });
@@ -146,9 +146,9 @@ describe("main integration", () => {
     await fs.promises.writeFile(keptFile, unsorted);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [path.join(tempDir, "**/docker-compose.yaml")],
-      baseDirs: [tempDir],
-      ignoreGitignored: true,
+      input: ["**/docker-compose.yaml"],
+      cwd: tempDir,
+      noIgnoreGitignored: false,
     });
     await main(options);
 
@@ -172,8 +172,8 @@ describe("main integration", () => {
     await fs.promises.copyFile(input, work);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
     });
     await main(options);
 
@@ -196,8 +196,8 @@ describe("main integration", () => {
     await fs.promises.copyFile(input, work);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
     });
     await main(options);
 
@@ -220,8 +220,8 @@ describe("main integration", () => {
     await fs.promises.copyFile(input, work);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
     });
     await main(options);
 
@@ -244,8 +244,8 @@ describe("main integration", () => {
     await fs.promises.copyFile(input, work);
 
     const options = await YamlOptionsSchema.parseAsync({
-      input: [work],
-      baseDirs: [tempDir],
+      input: ["**/*"],
+      cwd: tempDir,
     });
     await main(options);
 

@@ -133,20 +133,9 @@ export const YamlOptionsSchema = z.object({
   volumeDefSortedKeys: z
     .array(z.string())
     .default(["driver", "driver_opts", "external", "labels", "name"]),
-  ignoreGitignored: z.boolean().default(true),
-  input: z
-    .array(z.string())
-    .default([
-      "target/**/docker-compose.yml",
-      "target/**/docker-compose.yaml",
-      "target/**/docker-compose.*.yml",
-      "target/**/docker-compose.*.yaml",
-      "target/**/compose.yml",
-      "target/**/compose.yaml",
-      "target/**/compose.*.yml",
-      "target/**/compose.*.yaml",
-    ]),
-  baseDirs: z.array(z.string()).default(["target/"]),
+  noIgnoreGitignored: z.boolean().default(false),
+  input: z.array(z.string()).default(["**/{docker-compose,compose}{,.*}.{yml,yaml}"]),
+  cwd: z.string().default("target"),
   inputRenameExtensions: z.enum(["yml", "yaml"]).optional(),
   inputRenameName: z.enum(["docker-compose", "compose"]).optional(),
 });
@@ -162,7 +151,6 @@ export const parseYamlOptionsFromArgs = async (argv = process.argv.slice(2)) => 
     options: {
       blockQuote: { type: "string" },
       collectionStyle: { type: "string" },
-      commentString: { type: "string" },
       defaultKeyType: { type: "string" },
       defaultStringType: { type: "string" },
       doubleQuotedMinMultiLineLength: { type: "string" },
@@ -186,9 +174,9 @@ export const parseYamlOptionsFromArgs = async (argv = process.argv.slice(2)) => 
       deploySortedKeys: { type: "string", multiple: true },
       networkDefSortedKeys: { type: "string", multiple: true },
       volumeDefSortedKeys: { type: "string", multiple: true },
-      ignoreGitignored: { type: "boolean" },
+      noIgnoreGitignored: { type: "boolean" },
       input: { type: "string", multiple: true },
-      baseDirs: { type: "string", multiple: true },
+      cwd: { type: "string" },
       inputRenameExtensions: { type: "string" },
       inputRenameName: { type: "string" },
     },

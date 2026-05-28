@@ -9,6 +9,99 @@ A CLI tool to automatically sort services, keys, and environment variables in Do
 - **YAML Formatting**: Standardize indentation, quotes, line width, and more
 - **File Renaming**: Batch rename files (e.g., compose.yml → docker-compose.yaml)
 
+## Format Example
+
+`docker-compose-formatter` turns valid-but-noisy Compose YAML into a stable,
+review-friendly layout in one pass: root sections are ordered, service keys move
+into a predictable Compose-first order, and nested blocks such as `build` are
+normalized too.
+
+Before:
+
+```yaml
+volumes:
+  cache_data:
+    name: cache-volume
+    driver: local
+
+networks:
+  frontend:
+    name: frontend-network
+    driver: bridge
+
+services:
+  app:
+    volumes:
+      - ./app:/app
+    environment:
+      DB_HOST: database
+    ports:
+      - "8080:8080"
+    build:
+      target: production
+      dockerfile: Dockerfile
+      context: .
+    image: myapp:latest
+```
+
+After:
+
+```yaml
+services:
+  app:
+    image: myapp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: database
+    volumes:
+      - ./app:/app
+
+networks:
+  frontend:
+    driver: bridge
+    name: frontend-network
+
+volumes:
+  cache_data:
+    driver: local
+    name: cache-volume
+```
+
+## Name Grouping
+
+Service, volume, and network names are not sorted alphabetically. Names sharing
+a prefix split by `_` or `-` (e.g. `app` / `app-worker`) form a group, with the
+shorter name first. Unrelated names keep their original position.
+
+Before:
+
+```yaml
+services:
+  redis:
+  app-worker:
+  app:
+  database:
+```
+
+After:
+
+```yaml
+services:
+  redis:
+  app:
+  app-worker:
+  database:
+```
+
+`app` and `app-worker` were pulled together because of the shared `app` prefix;
+`redis` and `database` kept their original positions because nothing else in
+the list is related to them.
+
 ## Usage
 
 ### Run with Docker
@@ -42,7 +135,8 @@ pnpm start
 | `--networkDefSortedKeys`  | string[]                          | Specify key order within network definitions               |
 | `--volumeDefSortedKeys`   | string[]                          | Specify key order within volume definitions                |
 | `--input`                 | string[]                          | Glob patterns for target files                             |
-| `--baseDirs`              | string[]                          | Base directories for log output                            |
+| `--cwd`                   | string                            | Base directory for glob resolution and file I/O            |
+| `--noIgnoreGitignored`    | boolean                           | Include files ignored by `.gitignore`                      |
 | `--inputRenameExtensions` | `'yml'` \| `'yaml'`               | Standardize extensions (e.g., yml → yaml)                  |
 | `--inputRenameName`       | `'docker-compose'` \| `'compose'` | Standardize file names                                     |
 
@@ -50,16 +144,27 @@ pnpm start
 
 ### YAML Formatting Options
 
-Key options:
+Supported options:
 
-| Option                     | Type    | Description                          |
-| -------------------------- | ------- | ------------------------------------ |
-| `--indent`                 | number  | Indentation width (number of spaces) |
-| `--lineWidth`              | number  | Maximum line width (0 to disable)    |
-| `--singleQuote`            | boolean | Use single quotes                    |
-| `--defaultStringType`      | string  | Default string style                 |
-| `--nullStr`                | string  | Representation of null values        |
-| `--trueStr` / `--falseStr` | string  | Representation of boolean values     |
+| Option                             | Type                             | Description                          |
+| ---------------------------------- | -------------------------------- | ------------------------------------ |
+| `--blockQuote`                     | `'folded'` \| `'literal'`        | Block scalar style                   |
+| `--collectionStyle`                | `'any'` \| `'block'` \| `'flow'` | Collection output style              |
+| `--defaultKeyType`                 | string enum                      | Default key style                    |
+| `--defaultStringType`              | string enum                      | Default string style                 |
+| `--directives`                     | boolean                          | Include YAML directives              |
+| `--doubleQuotedAsJSON`             | boolean                          | Use JSON-compatible double quotes    |
+| `--doubleQuotedMinMultiLineLength` | number                           | Minimum length for multiline quotes  |
+| `--falseStr`                       | string                           | Representation of false values       |
+| `--flowCollectionPadding`          | boolean                          | Add spaces inside flow collections   |
+| `--indent`                         | number                           | Indentation width (number of spaces) |
+| `--indentSeq`                      | boolean                          | Indent sequence values               |
+| `--lineWidth`                      | number                           | Maximum line width (0 to disable)    |
+| `--minContentWidth`                | number                           | Minimum content width                |
+| `--nullStr`                        | string                           | Representation of null values        |
+| `--simpleKeys`                     | boolean                          | Require simple keys                  |
+| `--singleQuote`                    | boolean                          | Use single quotes                    |
+| `--trueStr`                        | string                           | Representation of true values        |
 
 > For default values, see [parser.js](src/parser.js)
 
@@ -79,6 +184,9 @@ pnpm start -- --indent 4
 
 # Standardize file names to docker-compose.yaml
 pnpm start -- --inputRenameName docker-compose --inputRenameExtensions yaml
+
+# Scan a specific directory for Docker Compose YAML variants
+pnpm start -- --cwd ./my-project
 ```
 
 ## Development

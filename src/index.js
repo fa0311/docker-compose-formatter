@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { globby } from "globby";
 import YAML from "yaml";
 import { parseYamlOptionsFromArgs } from "./parser.js";
@@ -234,21 +235,6 @@ const replaceName = (file, name, ext) => {
 };
 
 /**
- * Replaces the base directory in a file path.
- * @param {string} file - The original file path.
- * @param {string} baseDir - The base directory to replace.
- * @returns {string} - The modified file path.
- */
-const replaceDir = (file, baseDirs) => {
-  for (const baseDir of baseDirs) {
-    if (file.startsWith(baseDir)) {
-      return file.slice(baseDir.length);
-    }
-  }
-  return file;
-};
-
-/**
  * Checks if a file exists.
  * @param {string} filepath - The path to the file.
  * @returns {Promise<boolean>} - True if the file exists, false otherwise.
@@ -276,20 +262,20 @@ export const main = async (options) => {
     networkDefSortedKeys,
     volumeDefSortedKeys,
     input,
-    baseDirs,
+    cwd,
     inputRenameExtensions,
     inputRenameName,
-    ignoreGitignored,
+    noIgnoreGitignored,
     ...yamlOptions
   } = options;
 
-  for (const file of await globby(input, { gitignore: ignoreGitignored })) {
+  for (const file of await globby(input, { cwd, gitignore: !noIgnoreGitignored })) {
+    const filePath = path.resolve(cwd, file);
     const renamedFile = replaceName(file, inputRenameName, inputRenameExtensions);
-    const logFrom = replaceDir(file, baseDirs);
-    const logTo = replaceDir(renamedFile, baseDirs);
-    console.log(`Sorting ${logFrom}...`);
+    const renamedPath = path.resolve(cwd, renamedFile);
+    console.log(`Sorting ${file}...`);
 
-    const data = YAML.parseDocument(await fs.promises.readFile(file, "utf8"));
+    const data = YAML.parseDocument(await fs.promises.readFile(filePath, "utf8"));
     removeKey(data, "version");
 
     // Sort root level keys
@@ -340,14 +326,14 @@ export const main = async (options) => {
     });
 
     if (renamedFile === file) {
-      await fs.promises.writeFile(file, data.toString(yamlOptions));
+      await fs.promises.writeFile(filePath, data.toString(yamlOptions));
     } else {
-      console.log(`Renaming to ${logFrom} -> ${logTo}`);
-      if (await checkFileExists(renamedFile)) {
-        throw new Error(`File already exists: ${logTo}`);
+      console.log(`Renaming to ${file} -> ${renamedFile}`);
+      if (await checkFileExists(renamedPath)) {
+        throw new Error(`File already exists: ${renamedFile}`);
       }
-      await fs.promises.writeFile(renamedFile, data.toString(yamlOptions));
-      await fs.promises.unlink(file);
+      await fs.promises.writeFile(renamedPath, data.toString(yamlOptions));
+      await fs.promises.unlink(filePath);
     }
   }
 };
